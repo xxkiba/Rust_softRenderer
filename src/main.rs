@@ -1,4 +1,4 @@
-#![windows_subsystem = "windows"]
+//#![windows_subsystem = "windows"]
 
 // std::mem for  mem::size_of, computeing the size of the FrameBuffer structure,
 //time::Instant for measuring time,
@@ -18,6 +18,8 @@ use windows::{
     },
 };
 
+mod scene; //Scene module for rendering the scene, currently empty but can be expanded later.
+mod float4; //Float4 module for representing 4D vectors, currently only contains the Float4 struct but can be expanded later.
 
 //framebuffer
 #[derive(Debug)]
@@ -119,8 +121,8 @@ impl FrameBuffer {
 }
 
 
-const WIDTH: i32 = 480;
-const HEIGHT: i32 = 360;
+const WIDTH: i32 = 800;
+const HEIGHT: i32 = 600;
 static FRAME_BUFFER: OnceLock<Mutex<FrameBuffer>> = OnceLock::new(); //Global FrameBuffer instance
 
 pub fn set_pixel(x: i32, y: i32, r: u8, g: u8, b: u8, a: u8) {
@@ -140,6 +142,12 @@ pub fn clear(r: u8, g: u8, b: u8, a: u8) {
     let color = ((a as u32) << 24) | ((r as u32) << 16) | ((g as u32) << 8) | (b as u32);
     if let Some(frame_buffer) = FRAME_BUFFER.get(){
         frame_buffer.lock().unwrap().clear(color); //Lock the mutex and clear the framebuffer with the specified color.
+    }
+}
+
+pub fn set_depth(x: i32, y: i32, depth: f32) {
+    if let Some(frame_buffer) = FRAME_BUFFER.get(){
+        frame_buffer.lock().unwrap().set_depth(x, y, depth); //Lock the mutex and set the depth value.
     }
 }
 
@@ -240,28 +248,21 @@ fn main() -> Result<()> {
                 DispatchMessageW(&msg);
             }
 
-            let now = Instant::now();
-            let delta_time = now.duration_since(last_frame_time);
-            last_frame_time = now;
-
-            clear(0, 0, 255, 0); // Clear the framebuffer with black color.
+            let frame_start = Instant::now();            
 
 
 
-            for y in 0..HEIGHT {
-                    for x in 0..WIDTH {
-                        let r = ((x as f32 / WIDTH as f32) * 255.0) as u8;
-                        let g = ((y as f32 / HEIGHT as f32) * 255.0) as u8;
-                        set_pixel(x, y, r, g, 128, 255);
-                    }
-                }
+            scene::render(last_frame_time.elapsed().as_secs_f64()); 
 
             FRAME_BUFFER.get().unwrap().lock().unwrap().present(); //Present the framebuffer to the window.
-
-             frame_count += 1;
-            if frame_count % 60 == 0 {
-                    info!("Frames: {}, delta: {:.4}s", frame_count, delta_time.as_secs_f32());
-            }
+            
+            
+            last_frame_time = frame_start;
+            frame_count += 1;
+            // if frame_count % 60 == 0 {
+            //         info!("Frames: {}, delta: {:.4}s", frame_count, delta_time.as_secs_f32());
+            // }
+            
         }
 
         info!("Total frames rendered: {}", frame_count);

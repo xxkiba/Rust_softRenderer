@@ -21,7 +21,7 @@ use windows::{
 mod scene; //Scene module for rendering the scene, currently empty but can be expanded later.
 mod float4; //Float4 module for representing 4D vectors, currently only contains the Float4 struct but can be expanded later.
 mod boundingbox; //BoundingBox module for representing 2D and 3D bounding boxes, currently contains BoundingBox2D and BoundingBox3D structs but can be expanded later.
-
+mod matrix3; //Matrix3 module for representing 3x3 matrices, currently only contains the Matrix3 struct but can be expanded later.
 //framebuffer
 #[derive(Debug)]
 pub struct FrameBuffer{

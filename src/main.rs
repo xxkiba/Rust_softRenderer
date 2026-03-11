@@ -83,7 +83,7 @@ impl FrameBuffer {
                 bmiHeader: BITMAPINFOHEADER {
                     biSize: mem::size_of::<BITMAPINFOHEADER>() as u32,
                     biWidth: self.width,
-                    biHeight: -self.height,
+                    biHeight: self.height,
                     biPlanes: 1,
                     biBitCount: 32,
                     biCompression: BI_RGB.0,

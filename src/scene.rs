@@ -1,11 +1,13 @@
 use crate::{get_depth, set_depth, set_pixel, clear};
 use crate::float4::Float4;
+use crate::boundingbox::{BoundingBox2D, BoundingBox3D};
 
 
 // render a triangle in screen space
 pub fn render_triangle(a: &Float4, b: &Float4, c: &Float4) {
 
     //transform from ndc space to screen space
+    //[-1,1] -> [-0.5,0.5] -> [0,1] -> [0,w-1] [0,h-1]
     let mut vec1 = *a;
     let mut vec2 = *b;
     let mut vec3 = *c;
@@ -24,14 +26,19 @@ pub fn render_triangle(a: &Float4, b: &Float4, c: &Float4) {
     vec3.x *= crate::WIDTH as f32 - 1.0;
     vec3.y *= crate::HEIGHT as f32 - 1.0;
 
-    for y in 0..crate::HEIGHT {
-        for x in 0..crate::WIDTH {
-            let barycentric_coords = crate::scene::compute_barycentric_coords(x as f32, y as f32, &vec1, &vec2, &vec3);
-            if barycentric_coords.x < 0.0 { // alpha < 0, outside the triangle
-                continue; //Outside the triangle, skip.
+    let bbox = BoundingBox2D::from_triangle(&vec1, &vec2, &vec3, crate::WIDTH, crate::HEIGHT);
+    if !bbox.is_valid() {
+        log::error!("Invalid bounding box, skipping triangle");
+        return; //Invalid bounding box, skip rendering this triangle.
+    }
+
+    for y in bbox.min_y as i32..=bbox.max_y as i32 {
+        for x in bbox.min_x as i32..=bbox.max_x as i32 {
+            let bary = compute_barycentric_coords(x as f32, y as f32, &vec1, &vec2, &vec3);
+            if bary.x < 0.0 || bary.y < 0.0 || bary.z < 0.0 {
+                continue; //Pixel is outside the triangle, skip.
             }
-            set_pixel(x, y, 41, 77, 121, 255); //Set pixel color based on position.
-            set_depth(x, y, 1.0f32); //Set depth value to infinity.
+            set_pixel(x, y, 255, 255, 255, 255); //Set pixel color to white for now.
         }
     }
 }
@@ -70,7 +77,7 @@ pub fn compute_barycentric_coords(
 }
 
 pub fn render(_delta_time: f64){
-    //model space -> world space -> view space -> clip space -> ndc space[-1,1] -> screen space[w,h]
+    //model space -> world space -> view space -> clip space/ndc space[-1,1] -> screen space[w,h]
     // model matrix -> view matrix -> projection matrix -> viewport transform
 
     unsafe {

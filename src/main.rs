@@ -20,6 +20,7 @@ use windows::{
 
 mod scene; //Scene module for rendering the scene, currently empty but can be expanded later.
 mod float4; //Float4 module for representing 4D vectors, currently only contains the Float4 struct but can be expanded later.
+mod boundingbox; //BoundingBox module for representing 2D and 3D bounding boxes, currently contains BoundingBox2D and BoundingBox3D structs but can be expanded later.
 
 //framebuffer
 #[derive(Debug)]
@@ -212,7 +213,7 @@ fn main() -> Result<()> {
         let hwnd = CreateWindowExW(
             WINDOW_EX_STYLE::default(),
             window_class,
-            w!("Soft Renderer - Rust"),
+            w!("Soft Renderer"),
             WS_OVERLAPPEDWINDOW,
             CW_USEDEFAULT,
             CW_USEDEFAULT,
@@ -260,7 +261,7 @@ fn main() -> Result<()> {
             last_frame_time = frame_start;
             frame_count += 1;
             // if frame_count % 60 == 0 {
-            //         info!("Frames: {}, delta: {:.4}s", frame_count, delta_time.as_secs_f32());
+            //         info!("Frames: {}, delta: {:.4}s", 60, delta_time.as_secs_f32());
             // }
             
         }

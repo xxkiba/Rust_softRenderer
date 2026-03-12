@@ -109,18 +109,21 @@ pub fn render_triangle_with_vs(
     out2.position_cs /= out2.position_cs.w;
 
     // NDC -> screen space, set pixel color
-    render_triangle(&out0.position_cs, &out1.position_cs, &out2.position_cs);
+    render_triangle(&out0, &out1, &out2, constant_buffer);
 }
 
 // render a triangle in screen space
 // input: 3 vertices in ndc space [-1,1], output: render the triangle to framebuffer
-pub fn render_triangle(a: &Float4, b: &Float4, c: &Float4) {
+pub fn render_triangle(out0: &VSOut,    // vertex shader output for interpolation
+    out1: &VSOut,
+    out2: &VSOut,
+    constant_buffer: &ConstantBuffer,) {
 
     //transform from ndc space to screen space
     //[-1,1] -> [-0.5,0.5] -> [0,1] -> [0,w-1] [0,h-1]
-    let mut vec1 = *a;
-    let mut vec2 = *b;
-    let mut vec3 = *c;
+    let mut vec1 = out0.position_cs;
+    let mut vec2 = out1.position_cs;
+    let mut vec3 = out2.position_cs;
     vec1 *= 0.5;
     vec2 *= 0.5;
     vec3 *= 0.5;
@@ -148,7 +151,37 @@ pub fn render_triangle(a: &Float4, b: &Float4, c: &Float4) {
             if bary.x < 0.0 || bary.y < 0.0 || bary.z < 0.0 {
                 continue; //Pixel is outside the triangle, skip.
             }
-            set_pixel(x, y, 255, 255, 255, 255); //Set pixel color to white for now.
+
+            // normal interpolation using barycentric coordinates
+            let mut normal = out0.normal_ws * bary.x + out1.normal_ws * bary.y + out2.normal_ws * bary.z;
+            normal.normalize();
+
+            // get pixel world position for lighting calculation
+            let pixel_position_ws = out0.position_ws * bary.x + out1.position_ws * bary.y + out2.position_ws * bary.z;
+
+            // backface culling
+            let view_dir = pixel_position_ws - constant_buffer.camera_world_position;
+            if normal.dot(&view_dir) >= 0.0 {
+                continue; //Backface culling: if the normal is facing away from the camera, skip rendering this pixel.
+            }
+
+            // depth test
+            let position_ndc = out0.position_cs * bary.x + out1.position_cs * bary.y + out2.position_cs * bary.z;
+            let depth = position_ndc.z;
+            if position_ndc.z > get_depth(x, y) {
+                continue; //Depth test: if the pixel is behind what's already rendered, skip.
+            }
+            set_depth(x, y, depth);
+
+            //set_pixel(x, y, 255, 255, 255, 255); //Set pixel color to white for now.
+
+            // test normal visualization, map normal from [-1,1] to [0,255]
+            set_pixel(x, y,
+                ((normal.x * 0.5 + 0.5) * 255.0) as u8,
+                ((normal.y * 0.5 + 0.5) * 255.0) as u8,
+                ((normal.z * 0.5 + 0.5) * 255.0) as u8,
+                255,
+            );
         }
     }
 }

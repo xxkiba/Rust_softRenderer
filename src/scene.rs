@@ -1,8 +1,10 @@
 use crate::{get_depth, set_depth, set_pixel, clear};
 use crate::float4::Float4;
+use crate::staticmesh::{Vertex, StaticMesh};
 use std::sync::{Mutex, OnceLock};
 use crate::matrix4::Matrix4;
 use crate::boundingbox::{BoundingBox2D, BoundingBox3D};
+use log::{debug, error};
 
 static S_PROJECTION_MATRIX: OnceLock<Mutex<Matrix4>> = OnceLock::new();
 static S_VIEW_MATRIX: OnceLock<Mutex<Matrix4>> = OnceLock::new();
@@ -10,13 +12,8 @@ static S_VIEW_MATRIX: OnceLock<Mutex<Matrix4>> = OnceLock::new();
 static S_CAMERA_POSITION: OnceLock<Mutex<Float4>> = OnceLock::new();
 static S_CAMERA_TARGET: OnceLock<Mutex<Float4>> = OnceLock::new();
 
-#[derive(Clone, Copy, Default, Debug)]
-pub struct Vertex {
-    pub position: [f32; 4],  // model position
-    pub tex_coord: [f32; 4], // UV coordinates
-    pub normal: [f32; 4],    // normal
-    pub tangent: [f32; 4],   // tangent
-}
+static S_STATIC_MESH: OnceLock<StaticMesh> = OnceLock::new();
+
 
 pub struct VSOut {
     pub position_cs: Float4,   // clip space position
@@ -57,6 +54,12 @@ pub fn vertex_shader(
     // bitangent = normal × tangent
     let mut bitangent_ws = normal_ws.cross(&tangent_ws);
     bitangent_ws.normalize();
+
+    // debug!("position_ws: {:?}", position_ws);
+    // debug!("position_vs: {:?}", position_vs);
+    // debug!("position_cs: {:?}", position_cs);
+
+    // debug!("projection_matrix: {:?}", constant_buffer.projection_matrix);
 
     VSOut {
         position_cs,
@@ -220,6 +223,17 @@ pub fn init(_width: i32, _height: i32) {
     );
     S_PROJECTION_MATRIX.set(Mutex::new(projection_matrix)).unwrap();
     S_VIEW_MATRIX.set(Mutex::new(view_matrix)).unwrap();
+
+    match StaticMesh::from_file("Res/Model/Sphere.lhsm") {
+        Ok(mesh) => {
+            let _ = S_STATIC_MESH.set(mesh);
+            debug!("Mesh loaded successfully");
+        }
+        Err(e) => {
+            error!("Failed to load mesh: {}", e);
+        }
+    }
+
 }
 
 
@@ -234,7 +248,7 @@ pub fn render(_delta_time: f64){
 
         // model matrix
         let mut model_matrix = Matrix4::default();
-        model_matrix.translate(0.0, 0.0, 0.0);
+        model_matrix.translate(0.0, 0.0, -5.0);
 
         // normal matrix = (model^-1)^T
         let normal_matrix = model_matrix
@@ -252,11 +266,27 @@ pub fn render(_delta_time: f64){
             camera_position,
         );
 
-        // test triangle, w=1.0
-        let v0 = Vertex { position: [-0.5, -0.5, -2.0, 1.0], ..Default::default() };
-        let v1 = Vertex { position: [ 0.5, -0.5, -2.0, 1.0], ..Default::default() };
-        let v2 = Vertex { position: [ 0.0,  0.5, -2.0, 1.0], ..Default::default() };
+        if let Some(mesh) = S_STATIC_MESH.get() {
+            for i in (0..mesh.indices().len()).step_by(3) {
+                let idx0 = mesh.indices()[i] as usize;
+                let idx1 = mesh.indices()[i + 1] as usize;
+                let idx2 = mesh.indices()[i + 2] as usize;
+                render_triangle_with_vs(
+                    &cb,
+                    &mesh.vertices()[idx0],
+                    &mesh.vertices()[idx1],
+                    &mesh.vertices()[idx2],
+                    crate::WIDTH,
+                    crate::HEIGHT,
+                );
+            }
+        }
 
-        render_triangle_with_vs(&cb, &v0, &v1, &v2, crate::WIDTH, crate::HEIGHT);
+        // // test triangle, w=1.0
+        // let v0 = Vertex { position: [-0.5, -0.5, -2.0, 1.0], ..Default::default() };
+        // let v1 = Vertex { position: [ 0.5, -0.5, -2.0, 1.0], ..Default::default() };
+        // let v2 = Vertex { position: [ 0.0,  0.5, -2.0, 1.0], ..Default::default() };
+
+        // render_triangle_with_vs(&cb, &v0, &v1, &v2, crate::WIDTH, crate::HEIGHT);
     }
 }

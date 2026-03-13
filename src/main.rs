@@ -15,6 +15,7 @@ use windows::{
         Graphics::Gdi::*,                                   //GDIPixelFormat, GetDIBits, BITMAPINFO, BITMAPINFOHEADER, RGBQUAD, etc.
         System::LibraryLoader::GetModuleHandleW,            //Get current program's module handle. equivalent to C++Winmain's hInstance.
         UI::WindowsAndMessaging::*,                         //Windows management, CreateWindowExW, RegisterClassExW, etc.
+        UI::Input::KeyboardAndMouse::GetAsyncKeyState,
     },
 };
 
@@ -38,6 +39,32 @@ pub struct FrameBuffer{
 
 unsafe impl Send for FrameBuffer {} //Allow FrameBuffer to be sent across threads, as it contains raw pointers (HDC).
 unsafe impl Sync for FrameBuffer {} //Allow FrameBuffer to be shared across threads, as it contains raw pointers (HDC).
+
+
+// Check if a key is currently pressed using GetAsyncKeyState.
+pub fn is_key_pressed(vkey: i32) -> bool {
+    unsafe { GetAsyncKeyState(vkey) as u16 & 0x8000 != 0 }
+}
+
+// Check if a key is currently pressed using GetAsyncKeyState.
+pub fn is_key_triggered(vkey: i32, prev_state: &mut bool) -> bool {
+    let current = is_key_pressed(vkey);
+    let triggered = current && !*prev_state;
+    *prev_state = current;
+    triggered
+}
+
+pub mod keys {
+    pub const W: i32 = 0x57;
+    pub const A: i32 = 0x41;
+    pub const S: i32 = 0x53;
+    pub const D: i32 = 0x44;
+    pub const Q: i32 = 0x51;
+    pub const E: i32 = 0x45;
+    pub const SPACE: i32 = 0x20;
+    pub const SHIFT: i32 = 0x10;
+    pub const ESCAPE: i32 = 0x1B;
+}
 
 impl FrameBuffer {
     //Create a new FrameBuffer with the specified width and height.

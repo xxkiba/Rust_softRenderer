@@ -5,6 +5,7 @@ use std::sync::{Mutex, OnceLock};
 use crate::matrix4::Matrix4;
 use crate::texture::Texture;
 use crate::boundingbox::{BoundingBox2D, BoundingBox3D};
+use crate::{is_key_pressed, keys};
 use log::{debug, error};
 
 static S_PROJECTION_MATRIX: OnceLock<Mutex<Matrix4>> = OnceLock::new();
@@ -352,7 +353,58 @@ pub fn render(_delta_time: f64){
     //model space -> world space -> view space -> clip space/ndc space[-1,1] -> screen space[w,h]
     // model matrix -> view matrix -> projection matrix -> viewport transform
 
-    unsafe {
+        let move_speed = 5.0f32;
+            let mut camera_moved = false;
+
+            if crate::is_key_pressed(crate::keys::W) {
+                let mut pos = S_CAMERA_POSITION.get().unwrap().lock().unwrap();
+                let mut target = S_CAMERA_TARGET.get().unwrap().lock().unwrap();
+                pos.z -= move_speed * _delta_time as f32;
+                target.z -= move_speed * _delta_time as f32;
+                camera_moved = true;
+            } else if crate::is_key_pressed(crate::keys::S) {
+                let mut pos = S_CAMERA_POSITION.get().unwrap().lock().unwrap();
+                let mut target = S_CAMERA_TARGET.get().unwrap().lock().unwrap();
+                pos.z += move_speed * _delta_time as f32;
+                target.z += move_speed * _delta_time as f32;
+                camera_moved = true;
+            } else if crate::is_key_pressed(crate::keys::A) {
+                let mut pos = S_CAMERA_POSITION.get().unwrap().lock().unwrap();
+                let mut target = S_CAMERA_TARGET.get().unwrap().lock().unwrap();
+                pos.x -= move_speed * _delta_time as f32;
+                target.x -= move_speed * _delta_time as f32;
+                camera_moved = true;
+            } else if crate::is_key_pressed(crate::keys::D) {
+                let mut pos = S_CAMERA_POSITION.get().unwrap().lock().unwrap();
+                let mut target = S_CAMERA_TARGET.get().unwrap().lock().unwrap();
+                pos.x += move_speed * _delta_time as f32;
+                target.x += move_speed * _delta_time as f32;
+                camera_moved = true;
+            } else if crate::is_key_pressed(crate::keys::Q) {
+                let mut pos = S_CAMERA_POSITION.get().unwrap().lock().unwrap();
+                let mut target = S_CAMERA_TARGET.get().unwrap().lock().unwrap();
+                pos.y += move_speed * _delta_time as f32;
+                target.y += move_speed * _delta_time as f32;
+                camera_moved = true;
+            } else if crate::is_key_pressed(crate::keys::E) {
+                let mut pos = S_CAMERA_POSITION.get().unwrap().lock().unwrap();
+                let mut target = S_CAMERA_TARGET.get().unwrap().lock().unwrap();
+                pos.y -= move_speed * _delta_time as f32;
+                target.y -= move_speed * _delta_time as f32;
+                camera_moved = true;
+            }
+
+            if camera_moved {
+                let pos = S_CAMERA_POSITION.get().unwrap().lock().unwrap().clone();
+                let target = S_CAMERA_TARGET.get().unwrap().lock().unwrap().clone();
+                let mut view_matrix = S_VIEW_MATRIX.get().unwrap().lock().unwrap();
+                view_matrix.look_at(
+                    (pos.x, pos.y, pos.z),
+                    (target.x, target.y, target.z),
+                    (0.0, 1.0, 0.0),
+                );
+            }
+
 
         clear(0, 0, 0, 255);
 
@@ -399,5 +451,5 @@ pub fn render(_delta_time: f64){
         // let v2 = Vertex { position: [ 0.0,  0.5, -2.0, 1.0], ..Default::default() };
 
         // render_triangle_with_vs(&cb, &v0, &v1, &v2, crate::WIDTH, crate::HEIGHT);
-    }
+
 }

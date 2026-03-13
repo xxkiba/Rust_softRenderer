@@ -1,7 +1,6 @@
 use std::fs::File;
 use std::io::{Read};
 use std::slice;
-use std::mem;
 
 #[derive(Clone, Copy, Default, Debug)]
 pub struct Vertex {

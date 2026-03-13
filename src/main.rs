@@ -23,6 +23,7 @@ mod float4; //Float4 module for representing 4D vectors, currently only contains
 mod boundingbox; //BoundingBox module for representing 2D and 3D bounding boxes, currently contains BoundingBox2D and BoundingBox3D structs but can be expanded later.
 mod matrix3; 
 mod matrix4; 
+mod texture;
 mod staticmesh; //StaticMesh module for loading and representing static meshes, currently contains StaticMesh struct and Vertex struct but can be expanded later.
 //framebuffer
 #[derive(Debug)]

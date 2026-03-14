@@ -157,21 +157,30 @@ pub fn render_triangle_with_vs(
         Float4::from_array4(v2.tangent),
     );
 
+
+    let w0 = out0.position_cs.w;
+    let w1 = out1.position_cs.w;
+    let w2 = out2.position_cs.w;
+
     // clip space -> NDC
-    out0.position_cs /= out0.position_cs.w;
-    out1.position_cs /= out1.position_cs.w;
-    out2.position_cs /= out2.position_cs.w;
+    out0.position_cs /= w0;
+    out1.position_cs /= w1;
+    out2.position_cs /= w2;
 
     // NDC -> screen space, set pixel color
-    render_triangle(&out0, &out1, &out2, constant_buffer);
+    render_triangle(&out0, &out1, &out2, constant_buffer,w0,w1,w2);
 }
 
 // render a triangle in screen space
 // input: 3 vertices in ndc space [-1,1], output: render the triangle to framebuffer
-pub fn render_triangle(out0: &VSOut,    // vertex shader output for interpolation
+pub fn render_triangle(out0: &VSOut,
     out1: &VSOut,
     out2: &VSOut,
-    constant_buffer: &ConstantBuffer,) {
+    constant_buffer: &ConstantBuffer,
+    w0: f32,
+    w1: f32,
+    w2: f32,
+) {
 
     //transform from ndc space to screen space
     //[-1,1] -> [-0.5,0.5] -> [0,1] -> [0,w-1] [0,h-1]
@@ -197,22 +206,30 @@ pub fn render_triangle(out0: &VSOut,    // vertex shader output for interpolatio
     let bbox = BoundingBox2D::from_triangle(&vec1, &vec2, &vec3, crate::WIDTH, crate::HEIGHT);
     if !bbox.is_valid() {
         log::error!("Invalid bounding box, skipping triangle");
-        return; //Invalid bounding box, skip rendering this triangle.
+        return;
     }
+
+    // perspective correct: precompute 1/w for each vertex
+    let inv_w0 = 1.0 / w0;
+    let inv_w1 = 1.0 / w1;
+    let inv_w2 = 1.0 / w2;
 
     for y in bbox.min_y as i32..=bbox.max_y as i32 {
         for x in bbox.min_x as i32..=bbox.max_x as i32 {
             let bary = compute_barycentric_coords(x as f32, y as f32, &vec1, &vec2, &vec3);
             if bary.x < 0.0 || bary.y < 0.0 || bary.z < 0.0 {
-                continue; //Pixel is outside the triangle, skip.
+                continue;
             }
 
+            // perspective correct interpolation weight
+            let inv_w = inv_w0 * bary.x + inv_w1 * bary.y + inv_w2 * bary.z;
+
             // normal interpolation using barycentric coordinates
-            let mut normal = out0.normal_ws * bary.x + out1.normal_ws * bary.y + out2.normal_ws * bary.z;
+            let mut normal = (out0.normal_ws * inv_w0 * bary.x + out1.normal_ws * inv_w1 * bary.y + out2.normal_ws * inv_w2 * bary.z) / inv_w;
             normal.normalize();
 
             // get pixel world position for lighting calculation
-            let pixel_position_ws = out0.position_ws * bary.x + out1.position_ws * bary.y + out2.position_ws * bary.z;
+            let pixel_position_ws = (out0.position_ws * inv_w0 * bary.x + out1.position_ws * inv_w1 * bary.y + out2.position_ws * inv_w2 * bary.z) / inv_w;
 
             // backface culling
             let mut view_dir = pixel_position_ws - constant_buffer.camera_world_position;
@@ -229,7 +246,7 @@ pub fn render_triangle(out0: &VSOut,    // vertex shader output for interpolatio
             }
             set_depth(x, y, depth);
 
-            let texcoord = out0.texcoord * bary.x + out1.texcoord * bary.y + out2.texcoord * bary.z;
+            let texcoord = (out0.texcoord * inv_w0 * bary.x + out1.texcoord * inv_w1 * bary.y + out2.texcoord * inv_w2 * bary.z) / inv_w;
             let color = bilinear_sample_texture(texcoord.x, texcoord.y);
             set_pixel(x, y, (color.x * 255.0) as u8, (color.y * 255.0) as u8, (color.z * 255.0) as u8, (color.w * 255.0) as u8);
             //set_pixel(x, y, 255, 255, 255, 255); //Set pixel color to white for now.

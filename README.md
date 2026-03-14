@@ -1,14 +1,17 @@
 # Rust Soft Renderer
 
-A software rasterizer written in Rust from scratch, targeting Windows via Win32 API. No GPU APIs are used — the entire rendering pipeline runs on the CPU and outputs directly to a DIB (Device Independent Bitmap) framebuffer.
+A very simple software rasterizer written in Rust from scratch, targeting Windows via Win32 API. No GPU APIs are used — the entire rendering pipeline runs on the CPU and outputs directly to a DIB (Device Independent Bitmap) framebuffer.
+
+![Textured Earth Render](./result.png)
+*(Current output: Perspective-correct texture mapping applied to a 3D sphere)*
 
 ## Features
 
 - Complete rendering pipeline: model space → world space → view space → clip space → NDC → screen space
-- Perspective-correct texture sampling with bilinear interpolation
+- Perspective-correct attribute interpolation (texcoords, normals, world position) with bilinear texture sampling
 - Per-pixel depth test and backface culling
 - Custom matrix and vector math library
-- Binary mesh loading (`.lhsm` format)
+- Binary mesh loading (`.lhsm` self-made format)
 - Texture loading via the `image` crate
 - Real-time camera movement (WASD / QE) with delta-time
 
@@ -79,7 +82,7 @@ Vertex (model space)
   × (viewport - 1)      → screen space [0, w-1] [0, h-1]
 
 Per pixel:
-  barycentric coords → interpolate attributes
+  barycentric coords → perspective-correct interpolation (attr/w per vertex, divide by interpolated 1/w)
   backface culling   → discard if normal · view_dir ≥ 0
   depth test         → discard if depth > stored
   bilinear sample    → texture color → set_pixel
